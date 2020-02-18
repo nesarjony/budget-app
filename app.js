@@ -1,15 +1,26 @@
+/*
+    Budget Controller have all the functionlites of budget. 
+    inc:
+        1) Add item to budget
+        2) remove item from budget
+        3) Calculate the budget
+        4) Calculate the percentages
+*/
 let budgetController = (function(){
+    // Income Object
     let Income = function(id,description,value){
         this.id = id;
         this.description = description,
         this.value = value
     }
+    // Expense Object
     let Expense = function(id,description,value){
         this.id = id;
         this.description = description,
         this.value = value,
         this.percentage = -1
     }
+    // Calculate individual percentage of each expenses
     Expense.prototype.calculatePercentage = function(totalIncome){
         if(totalIncome > 0){
             this.percentage = (this.value/totalIncome)*100;
@@ -20,6 +31,7 @@ let budgetController = (function(){
     Expense.prototype.getPercentage = function(){
         return this.percentage;
     }
+    // Data structure to store all the budget data. inc:- income,expense,totalIncome,totalExpense
     let data = {
         allItems:{
             inc: [],
@@ -32,6 +44,7 @@ let budgetController = (function(){
         budget: 0,
         percentage: -1
     }
+    // Calculate total sum from each individual Item. 
     let calculateTotal = function(type){
         let sum = 0;
         data.allItems[type].forEach(function(curr){
@@ -40,6 +53,7 @@ let budgetController = (function(){
         data.total[type] = sum;
     }
     return{
+        // Add a item ( income or expense ) to the data-structure
         addItem:function(type,description,value){
             let ID = 0;
             if(data.allItems[type].length > 0)
@@ -55,6 +69,7 @@ let budgetController = (function(){
         getData: function(){
             console.log(data);
         },
+        // Calculate budget . budget = income - expense
         calculateBudget: function(){
             calculateTotal('inc');
             calculateTotal('exp');
@@ -65,6 +80,7 @@ let budgetController = (function(){
             }else
                 data.percentage = -1;
         },
+        // return budget object
         getBudget:function(){
             return {
                 totalIncome : data.total.inc,
@@ -73,6 +89,7 @@ let budgetController = (function(){
                 percentage: data.percentage
             };
         },
+        // Delete item from the data structure
         deleteItem:function(type,id){
             let ids;
             ids = data.allItems[type].map(function(curr){
@@ -82,22 +99,32 @@ let budgetController = (function(){
             data.allItems[type].splice(idIndex,1);
             
         },
+        // Calculate percentages of all expense item
         calculatePercentages: function(){
             data.allItems.exp.forEach(function(exp){
                 exp.calculatePercentage(data.total.inc);
             });
         },
+        // Return all percentages to outer function
         getPercentages: function(){
             let percentages = data.allItems.exp.map(function(exp){
                 return exp.percentage;
             });
-            console.log(percentages);
             return percentages;
         }
     }
 })();
-
+/*
+    UIController have all the functionlities related to DOM.
+    Example:
+        1) Add an item to the UI
+        2) Remove an item to the UI
+        3) Display Percentages
+        4) get the data from user
+        etc etc 
+*/
 let UIController = (function(){
+    // all CSS selector
     let DOMString = {
         typeSelect: '.add__type',
         descriptionSelect: '.add__description',
@@ -117,6 +144,7 @@ let UIController = (function(){
         getDOMString:function(){
             return DOMString;
         },
+        // read data from user and return as object to outer function
         getInput: function(){
             return{
                 type: document.querySelector(DOMString.typeSelect).value,
@@ -124,6 +152,7 @@ let UIController = (function(){
                 value: parseFloat(document.querySelector(DOMString.valueSelect).value)
             }
         },
+        // add item to the UI . item includes: Income, Expense
         addListItem:function(item,type){
              let html = '';
              if(type == 'inc'){
@@ -159,6 +188,7 @@ let UIController = (function(){
                  el.insertAdjacentHTML('beforeend',html);
              }
         },
+        // Clear all the input fields
         clearFields:function(){
             let fields = document.querySelectorAll(DOMString.descriptionSelect+', '+DOMString.valueSelect);
             let fieldArray = Array.prototype.slice.call(fields);
@@ -167,6 +197,7 @@ let UIController = (function(){
             });
 
         },
+        // Display Budget in UI
         displayBudget: function(budget){
              document.querySelector(DOMString.incomeValueSelect).textContent = budget.totalIncome;
              document.querySelector(DOMString.expenseValueSelect).textContent = budget.totalExpense;
@@ -177,10 +208,12 @@ let UIController = (function(){
                 document.querySelector(DOMString.expensePercentageSelect).textContent = budget.percentage + '%';
  
         },
+        // Delete an item in UI
         deleteItemUI: function(itemID){
             let element = document.getElementById(itemID);
             element.parentNode.removeChild(element);
         },
+        // Display Percentages in UI
         displayPercentages: function(percentages){
             let elements = document.querySelectorAll(DOMString.percentageSelect);
             let nodeSelectAll = function(fields,callback){
@@ -192,6 +225,7 @@ let UIController = (function(){
                 el.textContent = val + '%';
             });
         },
+        // Display month and year in the UI
         displayMonths: function(){
             let today = new Date();
             let monthId = today.getMonth();
@@ -202,11 +236,18 @@ let UIController = (function(){
 
     }
 })();
-
+/*
+    Controller have all the middleware functionlites. 
+    Controller will communicate UIController and BudgetController and Controller will handle
+    all the DOM event
+*/
 let Controller = (function(budgetCntrl,UIcntrl){
+    // Event listener
     let setupEventListener = function(){
         let DOMString = UIcntrl.getDOMString();
+        // Add submit button listener
         document.querySelector(DOMString.addbtnSelect).addEventListener('click',cntrlAddItem);
+        // handle enter key listener
         addEventListener('keypress',function(event){
             if(event.keyCode === 13){
                 cntrlAddItem();
@@ -214,6 +255,7 @@ let Controller = (function(budgetCntrl,UIcntrl){
         });
         document.querySelector(DOMString.domContainer).addEventListener('click',cntrlDeleteItem);
     }
+    // Control the functionalites when deleting an item
     let cntrlDeleteItem = function(event){
         let itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
         if(itemID){
@@ -226,11 +268,13 @@ let Controller = (function(budgetCntrl,UIcntrl){
             updatePercentages();
         }
     }
+    // update ( refresh ) budget after adding an item or deleting an item
     let updateBudget = function(){
         budgetCntrl.calculateBudget();
         let budget = budgetCntrl.getBudget();
         UIcntrl.displayBudget(budget);
     }
+    // funtionalities to add an item
     let cntrlAddItem = function(){
         let input = UIcntrl.getInput();
         if(input.description != "" && !isNaN(input.value) && input.value > 0){
@@ -241,6 +285,7 @@ let Controller = (function(budgetCntrl,UIcntrl){
             updatePercentages();
         }
     }
+    // Functionalites to remove and item
     let updatePercentages = function(){
         budgetCntrl.calculatePercentages();
         let percentages = budgetCntrl.getPercentages();
@@ -248,6 +293,7 @@ let Controller = (function(budgetCntrl,UIcntrl){
     }
    
     return {
+        // initial function invokation when app start.
         init: function(){
             setupEventListener();
             UIcntrl.displayBudget({
@@ -260,4 +306,6 @@ let Controller = (function(budgetCntrl,UIcntrl){
         }
     }
 })(budgetController,UIController);
+
+// Start the app
 Controller.init();
